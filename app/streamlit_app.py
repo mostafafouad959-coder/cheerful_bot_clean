@@ -5,7 +5,8 @@ import os
 import sys
 from html import escape
 from pathlib import Path
-
+import io
+import speech_recognition as sr
 import streamlit as st
 from streamlit_mic_recorder import mic_recorder
 ROOT = Path(__file__).resolve().parents[1]
@@ -319,7 +320,7 @@ def get_voice_text(lang_name: str, voice_code: str, labels: dict[str, str]) -> s
     col_record, col_hint = st.columns([1, 4])
     with col_record:
         audio = mic_recorder(
-            start_prompt=f"Record 🎙️",
+            start_prompt="Record 🎙️",
             stop_prompt="Stop 🛑",
             key="mic_rec"
         )
@@ -328,8 +329,21 @@ def get_voice_text(lang_name: str, voice_code: str, labels: dict[str, str]) -> s
 
     if audio:
         st.audio(audio["bytes"])
-        st.info("Audio received. If you have a speech-to-text model, connect audio['bytes'] to it.")
-        return None
+        
+        r = sr.Recognizer()
+        try:
+            audio_file = io.BytesIO(audio["bytes"])
+            with sr.AudioFile(audio_file) as source:
+                audio_data = r.record(source)
+                text = r.recognize_google(audio_data, language=voice_code)
+                st.success(f"🗣️ Translated Speech: {text}")
+                return text
+        except sr.UnknownValueError:
+            st.error("Could not understand audio / لم يتم التعرف على الصوت")
+            return None
+        except Exception as e:
+            st.error(f"Error processing audio: {e}")
+            return None
 
     return None
 
