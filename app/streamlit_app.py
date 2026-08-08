@@ -7,6 +7,7 @@ from html import escape
 from pathlib import Path
 import io
 import speech_recognition as sr
+from pydub import AudioSegment
 import streamlit as st
 from streamlit_mic_recorder import mic_recorder
 ROOT = Path(__file__).resolve().parents[1]
@@ -330,14 +331,19 @@ def get_voice_text(lang_name: str, voice_code: str, labels: dict[str, str]) -> s
     if audio:
         st.audio(audio["bytes"])
         
-        r = sr.Recognizer()
         try:
-            audio_file = io.BytesIO(audio["bytes"])
-            with sr.AudioFile(audio_file) as source:
+            audio_segment = AudioSegment.from_file(io.BytesIO(audio["bytes"]))
+            wav_io = io.BytesIO()
+            audio_segment.export(wav_io, format="wav")
+            wav_io.seek(0)
+
+            r = sr.Recognizer()
+            with sr.AudioFile(wav_io) as source:
                 audio_data = r.record(source)
                 text = r.recognize_google(audio_data, language=voice_code)
                 st.success(f"🗣️ Translated Speech: {text}")
                 return text
+
         except sr.UnknownValueError:
             st.error("Could not understand audio / لم يتم التعرف على الصوت")
             return None
@@ -345,8 +351,8 @@ def get_voice_text(lang_name: str, voice_code: str, labels: dict[str, str]) -> s
             st.error(f"Error processing audio: {e}")
             return None
 
-    return None
 
+   
 with st.sidebar:
     st.title("🌿 Cheerful Bot")
     st.caption("Emotion CBR assistant")
