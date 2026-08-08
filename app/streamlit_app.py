@@ -7,7 +7,7 @@ from html import escape
 from pathlib import Path
 
 import streamlit as st
-
+from streamlit_mic_recorder import mic_recorder
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -315,39 +315,23 @@ def render_meta(meta: dict, labels: dict[str, str], debug_mode: bool) -> None:
         with st.expander("Processing details", expanded=False):
             st.json(meta["debug_steps"])
 
-
 def get_voice_text(lang_name: str, voice_code: str, labels: dict[str, str]) -> str | None:
-    try:
-        from voice.speech_input import VoiceInput, check_voice
-    except Exception as exc:
-        st.warning(f"Voice input is unavailable: {exc}")
-        return st.chat_input(labels["input"])
-
-    ok, message = check_voice()
-    if not ok:
-        st.warning(message)
-        return st.chat_input(labels["input"])
-
     col_record, col_hint = st.columns([1, 4])
     with col_record:
-        record_btn = st.button(labels["record"], use_container_width=True)
+        audio = mic_recorder(
+            start_prompt=f"Record 🎙️",
+            stop_prompt="Stop 🛑",
+            key="mic_rec"
+        )
     with col_hint:
         st.caption(labels["voice_ready"].format(lang=lang_name))
 
-    if not record_btn:
+    if audio:
+        st.audio(audio["bytes"])
+        st.info("Audio received. If you have a speech-to-text model, connect audio['bytes'] to it.")
         return None
 
-    vi = VoiceInput(language=voice_code)
-    with st.spinner(labels["voice_ready"].format(lang=lang_name)):
-        heard = vi.listen()
-
-    if heard.startswith("ERROR:"):
-        st.error(heard)
-        return None
-
-    st.success(heard)
-    return heard
-
+    return None
 
 with st.sidebar:
     st.title("🌿 Cheerful Bot")
