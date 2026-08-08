@@ -6,3 +6,4 @@ langdetect
 deep-translator
 sounddevice
 SpeechRecognition
+streamlit-mic-recorder
